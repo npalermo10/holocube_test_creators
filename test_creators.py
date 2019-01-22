@@ -18,7 +18,7 @@ def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max):
 
 class Moving_points():
     '''returns active indexes as dictionary. Key (vel, theta range, phi range)'''
-    def __init__(self, numframes,  numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]], vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0):
+    def __init__(self, numframes,  numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]], vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0, wn = False):
         self.pts = hc5.stim.Points(hc5.window, numpoints, dims=dimensions, color=.5, pt_size=3)
         
         self.numframes = numframes
@@ -26,6 +26,11 @@ class Moving_points():
         self.direction = direction
         self.theta_ranges = theta_ranges
         self.phi_ranges = phi_ranges
+        self.wn = wn
+        self.wn_vel = []
+        if wn:
+            wn_powerVal = math.ceil(log(numframes)/log(2))
+            self.wn_vel = hc5.tools.mseq(2, wn_powerVal)  
         
         self.act_inds = []        
         self.calc_act_inds()
@@ -115,17 +120,25 @@ class Ann_test_creator(Test_creator):
     def __init__(self, num_frames):
         Test_creator.__init__(self, num_frames)
     
-    def add_annulus(self, **kwargs):
-        annulus = Moving_points(**kwargs)
-        self.add_to_starts([annulus.pts.on, 1])
+    def add_annulus(self, start_t= 0 , end_t = 1, **kwargs):
+        image_state = array([False] * self.numframes)
+        image_state[int(self.numframes*start_t): int(self.numframes*end_t)] = True
+        on_duration = int(self.numframes*end_t) - int(self.numframes*start_t)
+        annulus = Moving_points(on_duration, **kwargs)
+        
+        dx = zeros(self.numframes)
+        dy = zeros(self.numframes)
+        dz = zeros(self.numframes)
+        dx[int(self.numframes*start_t): int(self.numframes*end_t)] = annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)
+        dy[int(self.numframes*start_t): int(self.numframes*end_t)] =  annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)
+        dz[int(self.numframes*start_t): int(self.numframes*end_t)] =  annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)
+        
+        self.add_to_middles([annulus.pts.on, image_state])
         self.add_to_middles([annulus.pts.subset_set_py, annulus.select_all, annulus.far_y])
         self.add_to_middles([annulus.pts.subset_set_py, annulus.act_inds, annulus.orig_y])
-        self.add_to_middles([annulus.pts.inc_px,    annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)])
-        self.add_to_middles([annulus.pts.inc_py,    annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)])
-        self.add_to_middles([annulus.pts.inc_pz,    annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)])
-        self.add_to_ends([annulus.pts.inc_px, -annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
-        self.add_to_ends([annulus.pts.inc_py, -annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
-        self.add_to_ends([annulus.pts.inc_pz, -annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
+        self.add_to_middles([annulus.pts.inc_px,    dx])
+        self.add_to_middles([annulus.pts.inc_py,    dy])
+        self.add_to_middles([annulus.pts.inc_pz,    dz])
         self.add_to_ends([annulus.pts.on, 0])
 
 class Motion_ill_test_creator(Test_creator):
