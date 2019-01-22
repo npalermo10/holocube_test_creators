@@ -24,8 +24,13 @@ class Moving_points():
         self.numframes = numframes
         self.vel = vel
         self.direction = direction
-        self.theta_ranges = theta_ranges
-        self.phi_ranges = phi_ranges
+        self.theta_ranges = array(theta_ranges)
+        self.phi_ranges = array(phi_ranges)
+        if self.theta_ranges.shape != self.phi_ranges.shape:
+            if self.theta_ranges.shape[0] == 1:
+                self.theta_ranges = array([self.theta_ranges[0]] * self.phi_ranges.shape[0])
+            if self.phi_ranges.shape[0] == 1:
+                self.phi_ranges = array([self.phi_ranges[0]] * self.theta_ranges.shape[0])
         self.wn = wn
         self.wn_vel = []
         if wn:
