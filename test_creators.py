@@ -119,7 +119,12 @@ class Test_creator():
     def add_to_scheduler(self):
         hc5.scheduler.add_test(self.numframes, self.starts, self.middles, self.ends)
 
- 
+    def close_loop_lmr(self, lmr_scale = 0.0017):
+        self.add_to_middles([hc5.arduino.set_lmr_scale,   lmr_scale])
+
+    def save_ry(self, index_val):    
+        self.add_to_middles([hc.window.record, index_val, arange(self.numframes, dtype='int'), hc5.window.get_rot])
+
 class Ann_test_creator(Test_creator):
     ''' creates annulus experiments. takes Moving_points objects '''
     def __init__(self, num_frames):
@@ -144,6 +149,9 @@ class Ann_test_creator(Test_creator):
         self.add_to_middles([annulus.pts.inc_px,    dx])
         self.add_to_middles([annulus.pts.inc_py,    dy])
         self.add_to_middles([annulus.pts.inc_pz,    dz])
+        self.add_to_ends([annulus.pts.inc_px, -annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
+        self.add_to_ends([annulus.pts.inc_py, -annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
+        self.add_to_ends([annulus.pts.inc_pz, -annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]]) 
         self.add_to_ends([annulus.pts.on, 0])
 
 class Motion_ill_test_creator(Test_creator):
