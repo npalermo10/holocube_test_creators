@@ -44,20 +44,21 @@ class Moving_points():
         
     def calc_act_inds(self):
         for i_theta_range, theta_range in enumerate(self.theta_ranges):
-            coords_over_t = zeros([self.numframes, 3, self.pts.coords.shape[1]])
-            coords_over_t[0] = array([self.pts.coords[0] , self.pts.coords[1], self.pts.coords[2]])
-            dist = linalg.norm(self.direction)
-            mag  = self.vel/dist 
-            x_disp = self.direction[0] *mag
-            y_disp = self.direction[1] * mag
-            z_disp = self.direction[2] * mag
-            for frame in arange(1, self.numframes):
-                coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp,
-                                                coords_over_t[frame-1][1] + y_disp,
-                                                coords_over_t[frame-1][2] + z_disp,
-                                               ])
-            self.act_inds.append(array(inds_btw_sph_range(coords_over_t, theta_range[0], theta_range[1], self.phi_ranges[i_theta_range][0], self.phi_ranges[i_theta_range][1])))
-        
+            for i_phi_range, phi_range in enumerate(self.phi_ranges):
+                coords_over_t = zeros([self.numframes, 3, self.pts.coords.shape[1]])
+                coords_over_t[0] = array([self.pts.coords[0] , self.pts.coords[1], self.pts.coords[2]])
+                dist = linalg.norm(self.direction)
+                mag  = self.vel/dist 
+                x_disp = self.direction[0] *mag
+                y_disp = self.direction[1] * mag
+                z_disp = self.direction[2] * mag
+                for frame in arange(1, self.numframes):
+                    coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp,
+                                                    coords_over_t[frame-1][1] + y_disp,
+                                                    coords_over_t[frame-1][2] + z_disp,
+                                                   ])
+                self.act_inds.append(array(inds_btw_sph_range(coords_over_t, theta_range[0], theta_range[1], phi_range[0], phi_range[1])))
+
     def remove_unvisible_points(self):
         act_inds = array(self.act_inds).sum(axis = 0)
         pts_ever_visible = act_inds.sum(axis = 0, dtype = 'bool')
