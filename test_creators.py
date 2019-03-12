@@ -58,16 +58,14 @@ class Moving_points():
                                                     coords_over_t[frame-1][2] + z_disp,
                                                    ])
                 self.act_inds.append(array(inds_btw_sph_range(coords_over_t, theta_range[0], theta_range[1], phi_range[0], phi_range[1])))
-
+        self.act_inds = array(self.act_inds)
+        self.act_inds = self.act_inds.sum(axis=0, dtype = 'bool')
+         
     def remove_unvisible_points(self):
-        act_inds = array(self.act_inds).sum(axis = 0)
-        pts_ever_visible = act_inds.sum(axis = 0, dtype = 'bool')
-        act_inds = act_inds[:, pts_ever_visible]
-        to_remove = array([not i for i in  pts_ever_visible])
+        pts_ever_visible = self.act_inds.sum(axis = 0, dtype = 'bool')
+        to_remove = array((1 - pts_ever_visible), dtype = 'bool')
         self.pts.remove_subset(to_remove)
-        zero_array = zeros(act_inds.shape, dtype = bool)
-        zero_array[act_inds>0] = True
-        self.act_inds = zero_array
+        self.act_inds = self.act_inds[:,pts_ever_visible]
 
     def get_selector_funcs(self):
         self.orig_y = array([self.pts.coords[1, :].copy()]*self.numframes)
