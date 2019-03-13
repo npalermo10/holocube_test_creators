@@ -18,10 +18,12 @@ def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max):
 
 class Moving_points():
     '''returns active indexes as dictionary. Key (vel, theta range, phi range)'''
-    def __init__(self, numframes,  numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]], vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0, wn = False):
+    def __init__(self, numframes,  start_frame, end_frame, numpoints = 5000, dimensions= [[-8,8],[-2,2],[-30,5]], vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0, wn = False):
         self.pts = hc5.stim.Points(hc5.window, numpoints, dims=dimensions, color=.5, pt_size=3)
         
         self.numframes = numframes
+        self.start_frame = start_frame
+        self.end_frame = end_frame
         self.vel = vel
         self.direction = direction
         self.theta_ranges = array(theta_ranges)
@@ -62,6 +64,8 @@ class Moving_points():
         self.act_inds = self.act_inds.sum(axis=0, dtype = 'bool')
          
     def remove_unvisible_points(self):
+        self.act_inds[:self.start_frame] = array([False]*self.act_inds.shape[-1])
+        self.act_inds[self.end_frame:] = array([False]*self.act_inds.shape[-1])
         pts_ever_visible = self.act_inds.sum(axis = 0, dtype = 'bool')
         to_remove = array((1 - pts_ever_visible), dtype = 'bool')
         self.pts.remove_subset(to_remove)
@@ -132,15 +136,13 @@ class Ann_test_creator(Test_creator):
     def add_annulus(self, start_t= 0 , end_t = 1, **kwargs):
         image_state = array([False] * self.numframes)
         image_state[int(self.numframes*start_t): int(self.numframes*end_t)] = True
-        on_duration = int(self.numframes*end_t) - int(self.numframes*start_t)
-        annulus = Moving_points(on_duration, **kwargs)
+        end_fr = int(self.numframes*end_t)
+        start_fr = int(self.numframes*start_t)
+        annulus = Moving_points(numframes = self.numframes, start_frame= start_fr, end_frame = end_fr,   **kwargs)
         
-        dx = zeros(self.numframes)
-        dy = zeros(self.numframes)
-        dz = zeros(self.numframes)
-        dx[int(self.numframes*start_t): int(self.numframes*end_t)] = annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)
-        dy[int(self.numframes*start_t): int(self.numframes*end_t)] =  annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)
-        dz[int(self.numframes*start_t): int(self.numframes*end_t)] =  annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)
+        dx = annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)
+        dy = annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)
+        dz = annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)
         
         self.add_to_middles([annulus.pts.on, image_state])
         self.add_to_middles([annulus.pts.subset_set_py, annulus.select_all, annulus.far_y])
