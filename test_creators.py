@@ -18,7 +18,7 @@ def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max):
 
 class Moving_points():
     '''returns active indexes as dictionary. Key (vel, theta range, phi range)'''
-    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-8,8],[-2,2],[-30,5]],  vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0, wn = False):
+    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]],  vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0, wn = False):
 
         if dot_density:
             disp_vector = -1* vel * numframes * array(direction)
