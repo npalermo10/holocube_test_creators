@@ -13,7 +13,7 @@ def calc_theta_phi(x,y,z, phi_rot = 0):
 def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max):
     ''' check if coords in range of thetas. return frame and point inds for which wn should be active '''
     theta, phi = calc_theta_phi(coords_array[:,0], coords_array[:,1], coords_array[:,2], phi_rot = 0)
-    bool_array = (theta >= theta_min) * (theta <= theta_max) * (phi >= phi_min) * (phi <= phi_max)
+    bool_array = all(array([theta_max >= theta, theta_min <= theta, phi >= phi_min, phi <= phi_max]) , axis = 0)
     return bool_array
 
 class Moving_points():
