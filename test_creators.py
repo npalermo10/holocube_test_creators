@@ -52,6 +52,7 @@ class Moving_points():
         self.calc_act_inds()
         self.remove_unvisible_points()
         self.get_selector_funcs()
+        self.act_inds = array([where(arr)[0] for arr in self.act_inds]) ## change these into indices instead of boolean arrays for faster running.
         
     def calc_act_inds(self):
         for i_theta_range, theta_range in enumerate(self.theta_ranges):
