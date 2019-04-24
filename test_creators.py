@@ -250,12 +250,6 @@ class Motion_ill_test_creator(Test_creator):
         self.add_to_middles([image.on, image_state])
         self.add_to_ends([image.on, False])
 
-    def add_bg_static(self, intensity= 1.0 , start_t = 0.0, end_t = 1.0):
-        ''' add a static bg color from a start to end time'''
-        bg_color = (255*intensity, 255*intensity, 255*intensity, 1.0)
-        bg_state = array([(0.0,0.0,0.0,1.0)] * self.numframes)
-        bg_state[int(self.numframes*start_t): int(self.numframes *end_t)] = bg_color
-        self.add_to_middles([hc5.window.set_bg, bg_state])
 
 class Condition:
     ''' use this instance for a list of factors that will be cycled'''
