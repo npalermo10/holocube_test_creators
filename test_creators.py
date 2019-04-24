@@ -98,12 +98,14 @@ class Moving_points():
 
 class Test_creator():
     ''' creates annulus experiments. takes Moving_points objects '''
-    def __init__(self, numframes):
+    def __init__(self, numframes, rest_numframes = 300, cl_rest_bar = True):
         self.starts = []
         self.middles = []
         self.ends = []
         self.add_inits()
         self.numframes = numframes
+        if cl_rest_bar:
+            self.add_rest_bar(numframes = rest_numframes)
         
     def reset(self):
         self.starts = []
