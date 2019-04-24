@@ -18,7 +18,7 @@ def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max):
 
 class Moving_points():
     '''returns active indexes as dictionary. Key (vel, theta range, phi range)'''
-    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]],  vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0, wn = False):
+    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]],  vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], rx = 0, ry = 0, rz = 0, wn_seq = [], color = 0.5):
 
         if dot_density:
             disp_vector = -1* vel * numframes * array(direction)
@@ -42,12 +42,8 @@ class Moving_points():
                 self.theta_ranges = array([self.theta_ranges[0]] * self.phi_ranges.shape[0])
             if self.phi_ranges.shape[0] == 1:
                 self.phi_ranges = array([self.phi_ranges[0]] * self.theta_ranges.shape[0])
-        self.wn = wn
-        self.wn_vel = []
-        if wn:
-            wn_powerVal = math.ceil(log(numframes)/log(2))
-            self.wn_vel = hc5.tools.mseq(2, wn_powerVal)  
-        
+        self.wn_seq = wn_seq
+
         self.act_inds = []        
         self.calc_act_inds()
         self.remove_unvisible_points()
@@ -60,15 +56,28 @@ class Moving_points():
                 coords_over_t = zeros([self.numframes, 3, self.pts.coords.shape[1]])
                 coords_over_t[0] = array([self.pts.coords[0] , self.pts.coords[1], self.pts.coords[2]])
                 dist = linalg.norm(self.direction)
-                mag  = self.vel/dist 
-                x_disp = self.direction[0] *mag
-                y_disp = self.direction[1] * mag
-                z_disp = self.direction[2] * mag
-                for frame in arange(1, self.numframes):
-                    coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp,
-                                                    coords_over_t[frame-1][1] + y_disp,
-                                                    coords_over_t[frame-1][2] + z_disp,
-                                                   ])
+                mag  = self.vel/dist
+                x_disp = 0
+                y_disp = 0
+                z_disp = 0
+                if len(self.wn_seq) > 0:
+                    x_disp = self.direction[0] * mag * self.wn_seq
+                    y_disp = self.direction[1] * mag * self.wn_seq
+                    z_disp = self.direction[2] * mag * self.wn_seq
+                    for frame in arange(1, self.numframes):
+                        coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp[frame],
+                                                        coords_over_t[frame-1][1] + y_disp[frame],
+                                                        coords_over_t[frame-1][2] + z_disp[frame],
+                                                       ])
+                else:
+                    x_disp = self.direction[0] *mag
+                    y_disp = self.direction[1] * mag
+                    z_disp = self.direction[2] * mag
+                    for frame in arange(1, self.numframes):
+                        coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp,
+                                                        coords_over_t[frame-1][1] + y_disp,
+                                                        coords_over_t[frame-1][2] + z_disp,
+                                                       ])
                 self.act_inds.append(array(inds_btw_sph_range(coords_over_t, theta_range[0], theta_range[1], phi_range[0], phi_range[1])))
         self.act_inds = array(self.act_inds)
         self.act_inds = self.act_inds.sum(axis=0, dtype = 'bool')
@@ -122,15 +131,45 @@ class Test_creator():
         for end in ends:                   
             self.add_to_ends(end)
 
-    def add_index_lights(self, ref_light, index):
+    def add_rest_bar(self, numframes):        
+        rbar = hc5.stim.cbarr_class(hc5.window, dist=1)
+        starts =  [[hc5.window.set_far,         2],
+                   [hc5.window.set_bg,          [0.0,0.0,0.0,1.0]],
+                   [hc5.arduino.set_lmr_scale,  -.1],
+                   [rbar.set_ry,               0],
+                   [rbar.switch,               True] ]
+        middles = [[rbar.inc_ry,               hc5.arduino.lmr]]
+        ends =    [[rbar.switch,               False],
+                   [hc5.window.set_far,         2]]
+        hc5.scheduler.add_rest(numframes, starts, middles, ends)
+        
+    def add_index_lights(self, ref_light, index, num_mod = 0):
         '''adds index light sequence to middles. turns off light at end'''
+        index += num_mod
         seq = hc5.tools.test_num_flash(index, self.numframes)
         self.add_to_starts([hc5.window.set_ref, ref_light, (0,0,0)])
         self.add_to_middles([hc5.window.set_ref, ref_light, seq])
         self.add_to_ends([hc5.window.set_ref, ref_light, (0,0,0)])
 
-    def add_to_scheduler(self):
+    def add_wn_lights(self, ref_light, ms):
+        wn_seq = array([(0,175+wn*80,0) for wn in ms], dtype='int')
+        wn_seq[-1] = array([0, 0, 0])
+        self.add_to_starts([hc5.window.set_ref, ref_light, (0,0,0)])
+        self.add_to_middles([hc5.window.set_ref, ref_light, wn_seq])
+        self.add_to_ends([hc5.window.set_ref, ref_light, (0,0,0)])
+    
+    def add_to_scheduler(self, and_reset = True):
+        ''' send test to scheduler and reset test if flag is True.'''
         hc5.scheduler.add_test(self.numframes, self.starts, self.middles, self.ends)
+        if and_reset:
+            self.reset()
+            
+    def add_bg_static(self, intensity= 1.0 , start_t = 0.0, end_t = 1.0):
+        ''' add a static bg color from a start to end time'''
+        bg_color = (intensity, intensity, intensity, 1.0)
+        bg_state = array([(0.0,0.0,0.0,1.0)] * self.numframes)
+        bg_state[int(self.numframes*start_t): int(self.numframes *end_t)] = bg_color
+        self.add_to_middles([hc5.window.set_bg, bg_state])
 
     def close_loop_lmr(self, lmr_scale = 0.0017):
         self.add_to_middles([hc5.arduino.set_lmr_scale,   lmr_scale])
@@ -149,20 +188,35 @@ class Ann_test_creator(Test_creator):
         end_fr = int(self.numframes*end_t)
         start_fr = int(self.numframes*start_t)
         annulus = Moving_points(numframes = self.numframes, start_frame= start_fr, end_frame = end_fr,   **kwargs)
+
+        dx = 0
+        dy = 0
+        dz = 0
+        if 'wn_seq' in kwargs:
+            wn_seq = kwargs['wn_seq']
+            dx, dy, dz = zeros(self.numframes), zeros(self.numframes), zeros(self.numframes)
+            dx[start_fr:] = (annulus.direction[0] * annulus.vel * wn_seq/linalg.norm(annulus.direction))[:end_fr-start_fr]
+            dy[start_fr:] = (annulus.direction[1] * annulus.vel * wn_seq/linalg.norm(annulus.direction))[:end_fr - start_fr]
+            dz[start_fr:] = (annulus.direction[2] * annulus.vel * wn_seq/linalg.norm(annulus.direction))[:end_fr - start_fr]
+            self.add_to_ends([annulus.pts.inc_px, -annulus.direction[0] * annulus.vel * sum(wn_seq[:end_fr])/linalg.norm(annulus.direction)])
+            self.add_to_ends([annulus.pts.inc_py, -annulus.direction[1] * annulus.vel * sum(wn_seq[:end_fr])/linalg.norm(annulus.direction)])
+            self.add_to_ends([annulus.pts.inc_pz, -annulus.direction[2] * annulus.vel * sum(wn_seq[:end_fr])/linalg.norm(annulus.direction)]) 
         
-        dx = annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)
-        dy = annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)
-        dz = annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)
+        else:
+            dx = annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)
+            dy = annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)
+            dz = annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)
+            self.add_to_ends([annulus.pts.inc_px, -annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
+            self.add_to_ends([annulus.pts.inc_py, -annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
+            self.add_to_ends([annulus.pts.inc_pz, -annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]]) 
         
+
         self.add_to_middles([annulus.pts.on, image_state])
         self.add_to_middles([annulus.pts.subset_set_py, annulus.select_all, annulus.far_y])
         self.add_to_middles([annulus.pts.subset_set_py, annulus.act_inds, annulus.orig_y])
         self.add_to_middles([annulus.pts.inc_px,    dx])
         self.add_to_middles([annulus.pts.inc_py,    dy])
         self.add_to_middles([annulus.pts.inc_pz,    dz])
-        self.add_to_ends([annulus.pts.inc_px, -annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
-        self.add_to_ends([annulus.pts.inc_py, -annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
-        self.add_to_ends([annulus.pts.inc_pz, -annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]]) 
         self.add_to_ends([annulus.pts.on, 0])
 
 class Motion_ill_test_creator(Test_creator):
