@@ -179,6 +179,14 @@ class Test_creator():
     def save_ry(self, index_val):    
         self.add_to_middles([hc.window.record, index_val, arange(self.numframes, dtype='int'), hc5.window.get_rot])
 
+    def add_sph_seg(self, rx = 0, ry=0, rz = 0, **kwargs):
+        ss = hc5.stim.Spherical_segment(hc5.window, **kwargs)
+        self.add_to_starts([ss.set_rx,                  rx])
+        self.add_to_starts([ss.set_ry,                  ry])
+        self.add_to_starts([ss.set_rz,                  rz])
+        self.add_to_starts([ss.switch,                  True])
+        self.add_to_ends([ss.switch,                  False])    
+
 class Ann_test_creator(Test_creator):
     ''' creates annulus experiments. takes Moving_points objects '''
     def __init__(self, num_frames):
