@@ -29,7 +29,7 @@ class Moving_points():
             volume  = abs(product(dimensions[:, 1] - dimensions[:, 0]))
             numpoints = int(dot_density * volume)
             
-        self.pts = hc5.stim.Points(hc5.window, numpoints, dims=dimensions, color=.5, pt_size=3)
+        self.pts = hc5.stim.Points(hc5.window, numpoints, dims=dimensions, color=color, pt_size=3)
         self.numframes = numframes
         self.start_frame = start_frame
         self.end_frame = end_frame
