@@ -10,9 +10,26 @@ def calc_theta_phi(x,y,z, phi_rot = 0):
     phi[phi < -pi] += 2*pi
     return theta, phi
 
-def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max):
+def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max, rx, ry, rz):
     ''' check if coords in range of thetas. return frame and point inds for which wn should be active '''
-    theta, phi = calc_theta_phi(coords_array[:,0], coords_array[:,1], coords_array[:,2], phi_rot = 0)
+    rx = -rx
+    ry = -ry
+    rz = -rz
+    x_rot_mat = [[1,0,0],
+                [0, cos(rx), -sin(rx)],
+                [0, sin(rx), cos(rx)]]
+    y_rot_mat = [[cos(ry), 0, sin(ry)],
+                 [0 , 1, 0], 
+                 [-sin(ry), 0, cos(ry)]]
+    z_rot_mat=[[cos(rz), -sin(rz), 0],
+               [sin(rz), cos(rz), 0],
+               [0 , 0, 1]]
+
+    coords_rotated_x = dot(x_rot_mat, coords_array)
+    coords_rotated_yx = dot(y_rot_mat, coords_rotated_x.swapaxes(0, 1))
+    coords_rotated_zyx = dot(z_rot_mat, coords_rotated_yx.swapaxes(0, 1))
+    xs, ys, zs = coords_rotated_zyx
+    theta, phi = calc_theta_phi(xs, ys, zs, phi_rot = 0)
     bool_array = all(array([theta_max >= theta, theta_min <= theta, phi >= phi_min, phi <= phi_max]) , axis = 0)
     return bool_array
 
@@ -34,6 +51,9 @@ class Moving_points():
         self.start_frame = start_frame
         self.end_frame = end_frame
         self.vel = vel
+        self.rx = rx
+        self.ry = ry
+        self.rz = rz
         self.direction = direction
         self.theta_ranges = array(theta_ranges)
         self.phi_ranges = array(phi_ranges)
@@ -78,7 +98,7 @@ class Moving_points():
                                                         coords_over_t[frame-1][1] + y_disp,
                                                         coords_over_t[frame-1][2] + z_disp,
                                                        ])
-                self.act_inds.append(array(inds_btw_sph_range(coords_over_t, theta_range[0], theta_range[1], phi_range[0], phi_range[1])))
+                self.act_inds.append(array(inds_btw_sph_range(coords_over_t, theta_range[0], theta_range[1], phi_range[0], phi_range[1], self.rx, self.ry, self.rz)))
         self.act_inds = array(self.act_inds)
         self.act_inds = self.act_inds.sum(axis=0, dtype = 'bool')
          
@@ -144,8 +164,16 @@ class Test_creator():
         ends =    [[rbar.switch,               False],
                    [hc5.window.set_far,         2]]
         hc5.scheduler.add_rest(numframes, starts, middles, ends)
+
+    def add_static_bar(self, ry_pos = 0, start_t = 0, end_t = 1):        
+        rbar = hc5.stim.cbarr_class(hc5.window, dist=1)
+        state = array([0.0] * self.numframes)
+        state[int(self.numframes*start_t): int(self.numframes *end_t)] = 1
+        self.add_to_starts([rbar.set_ry,               ry_pos])
+        self.add_to_middles([rbar.on,               state])
+        self.add_to_ends([rbar.switch,               False])
         
-    def add_index_lights(self, ref_light, index, num_mod = 0):
+    def add_index_lights(self, ref_light, index, num_mod = 1):
         '''adds index light sequence to middles. turns off light at end'''
         index += num_mod
         seq = hc5.tools.test_num_flash(index, self.numframes)
