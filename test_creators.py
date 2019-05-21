@@ -116,7 +116,7 @@ class Moving_points():
         self.far_y = array([[10] * self.pts.num] * self.numframes)
         self.select_all = array([[1]*self.pts.num] * self.numframes,  dtype='bool')
 
-class Test_creator():
+class Test_creator(object):
     ''' creates annulus experiments. takes Moving_points objects '''
     def __init__(self, numframes, rest_numframes = 300, cl_rest_bar = True):
         self.starts = []
@@ -215,6 +215,8 @@ class Test_creator():
         self.add_to_starts([ss.switch,                  True])
         self.add_to_ends([ss.switch,                  False])    
 
+        
+    
 class Ann_test_creator(Test_creator):
     ''' creates annulus experiments. takes Moving_points objects '''
     def __init__(self, num_frames):
@@ -278,6 +280,29 @@ class Motion_ill_test_creator(Test_creator):
         self.add_to_middles([image.on, image_state])
         self.add_to_ends([image.on, False])
 
+class Grating_test_creator(Test_creator):
+    def __init__(self, num_frames):
+        Test_creator.__init__(self, num_frames)
+        self.set_perspective()
+        
+    def set_perspective(self):
+        self.add_to_starts([hc5.window.set_viewport_projection, 0, 0])
+        self.add_to_ends([hc5.window.set_viewport_projection, 0, 1])
+
+    def reset(self):
+        super(Grating_test_creator, self).reset()
+        self.set_perspective()
+        
+    def add_plaid(self, start_t = 0, end_t = 1, viewport = 0, **kwargs):
+        sp = hc5.stim.grating_class(hc5.window, vp =viewport, fast=True)
+        sp.add_plaid(**kwargs)
+        state = array([0.0] * self.numframes)
+        state[int(self.numframes*start_t): int(self.numframes *end_t)] = 1
+        self.add_to_starts([sp.choose_grating, 0])
+        self.add_to_middles([sp.on, state])
+        self.add_to_middles([sp.animate, self.numframes])
+        self.add_to_ends([sp.on, 0])
+    
 
 class Condition:
     ''' use this instance for a list of factors that will be cycled'''
