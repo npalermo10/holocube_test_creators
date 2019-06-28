@@ -215,13 +215,18 @@ class Test_creator(object):
         self.add_to_starts([ss.switch,                  True])
         self.add_to_ends([ss.switch,                  False])    
 
+    def add_looming_stim(self, rx = 0, ry = 0, rz =0 ,start_t = 0 , end_t= 1, **kwargs):
+        ## rotation happens in rx, ry, rz order
+        disk = hc5.stim.disk_class(hc5.window, radius = 0.2, **kwargs)
+        disk.set_rx = rx
+        disk.set_ry = ry
+        disk.set_rz = rz
+        length = linalg.norm(disk.pos)
+        v = disk.pos/length
         
-    
-class Ann_test_creator(Test_creator):
-    ''' creates annulus experiments. takes Moving_points objects '''
-    def __init__(self, num_frames):
-        Test_creator.__init__(self, num_frames)
-    
+        self.add_to_starts([disk.on, 1])
+
+        
     def add_annulus(self, start_t= 0 , end_t = 1, **kwargs):
         image_state = array([False] * self.numframes)
         image_state[int(self.numframes*start_t): int(self.numframes*end_t)] = True
