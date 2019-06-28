@@ -258,7 +258,12 @@ class Ann_test_creator(Test_creator):
         self.add_to_middles([annulus.pts.inc_py,    dy])
         self.add_to_middles([annulus.pts.inc_pz,    dz])
         self.add_to_ends([annulus.pts.on, 0])
-
+    
+class Ann_test_creator(Test_creator):
+    ''' creates annulus experiments. takes Moving_points objects. This should be phased out soon 5/29/2019. '''
+    def __init__(self, num_frames):
+        Test_creator.__init__(self, num_frames)
+      
 class Motion_ill_test_creator(Test_creator):
     '''create static image motion illusions. pick image location, onset time, end time'''
     def __init__(self, num_frames):
