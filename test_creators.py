@@ -303,16 +303,32 @@ class Grating_test_creator(Test_creator):
         super(Grating_test_creator, self).reset()
         self.set_perspective()
         
-    def add_plaid(self, start_t = 0, end_t = 1, viewport = 0, **kwargs):
+    def add_plaid(self, start_t = 0, end_t = 1, viewport = 0, static = False,  **kwargs):
         sp = hc5.stim.grating_class(hc5.window, vp =viewport, fast=True)
-        sp.add_plaid(**kwargs)
+        if static:
+            sp.add_plaid(tf1 = 0.0001, tf2= 0.0001, **kwargs)
+        else:
+            sp.add_plaid(**kwargs)
         state = array([0.0] * self.numframes)
         state[int(self.numframes*start_t): int(self.numframes *end_t)] = 1
         self.add_to_starts([sp.choose_grating, 0])
         self.add_to_middles([sp.on, state])
-        self.add_to_middles([sp.animate, self.numframes])
+        self.add_to_middles([sp.animate, arange(self.numframes)])
         self.add_to_ends([sp.on, 0])
-    
+
+    def add_grating(self, start_t = 0, end_t = 1, viewport = 0, static = False, **kwargs):
+        sp = hc5.stim.grating_class(hc5.window, vp =viewport, fast=True)
+        if static:
+            sp.add_grating(tf = 0.0001, **kwargs)
+        else:
+            sp.add_grating(**kwargs)
+        state = array([0.0] * self.numframes)
+        state[int(self.numframes*start_t): int(self.numframes *end_t)] = 1
+        self.add_to_starts([sp.choose_grating, 0])
+        self.add_to_middles([sp.on, state])
+        self.add_to_middles([sp.animate, arange(self.numframes)])
+        self.add_to_ends([sp.on, 0])
+        
 
 class Condition:
     ''' use this instance for a list of factors that will be cycled'''
