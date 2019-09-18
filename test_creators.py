@@ -205,6 +205,39 @@ class Test_creator(object):
         self.add_to_middles([hc5.window.set_ref, ref_light, wn_seq])
         self.add_to_ends([hc5.window.set_ref, ref_light, (0,0,0)])
 
+        
+    def add_simple_pt_field(self, density = 30, trans_v = [0.00, 0.00, 0.00], rot_v = [0.00, 0.00,0.00], start_t = 0, end_t = 1, **kwargs):
+        ''' simple translating point field'''
+        dx, dy, dz = trans_v
+        rx, ry, rz = rot_v
+        vel = linalg.norm([dx, dy, dz])
+        disp_vector = -1* vel * self.numframes * array([dx, dy, dz])
+        window_far = 2 #how far the frustum depth is set. Usually its set to 1
+        dimensions = sort(array([[0, disp_vector[0]], [0, disp_vector[1]], [0, disp_vector[2]]]))
+        dimensions[:, 0] = dimensions[:, 0] - window_far*2.5
+        dimensions[:,1] = dimensions[:, 1] + window_far*2.5
+        volume  = abs(product(dimensions[:, 1] - dimensions[:, 0]))
+        numpoints = int(density * volume)
+       
+        pts = hc5.stim.Points(hc5.window, num = numpoints, dims = dimensions, **kwargs)
+        state = array([0.0] * self.numframes)
+        state[int(self.numframes*start_t): int(self.numframes *end_t)] = 1
+        self.add_to_middles([pts.on, state])
+        self.add_to_middles([pts.inc_px, dx])
+        self.add_to_middles([pts.inc_py, dy])
+        self.add_to_middles([pts.inc_pz, dz])
+        self.add_to_middles([pts.inc_rx, rx])
+        self.add_to_middles([pts.inc_ry, ry])
+        self.add_to_middles([pts.inc_rz, rz])
+        self.add_to_ends([pts.switch, False])
+        self.add_to_ends([pts.inc_px, -dx*self.numframes])
+        self.add_to_ends([pts.inc_py, -dy*self.numframes])
+        self.add_to_ends([pts.inc_pz, -dz*self.numframes])
+        self.add_to_ends([pts.inc_rx, -rx*self.numframes])
+        self.add_to_ends([pts.inc_ry, -ry*self.numframes])
+        self.add_to_ends([pts.inc_rz, -rz*self.numframes])
+        
+        
     def add_simple_trans_pt_field(self, density = 30, dx = 0, dy = 0, dz = 0.01, start_t = 0, end_t = 1, **kwargs):
         ''' simple translating point field'''
         vel = linalg.norm([dx, dy, dz])
