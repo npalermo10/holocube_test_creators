@@ -212,7 +212,7 @@ class Test_creator(object):
         if trans_v.shape[1] == 1:
             trans_v.repeat(numframes).reshape(3, numframes)
         dx, dy, dz = trans_v
-           rx, ry, rz = rot_v
+        rx, ry, rz = rot_v
         dimensions = array([[cumsum(dx).min(), cumsum(dx).max()],
                                [cumsum(dy).min(), cumsum(dy).max()],
                                [cumsum(dz).min(), cumsum(dz).max()]])
