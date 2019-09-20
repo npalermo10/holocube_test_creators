@@ -208,12 +208,15 @@ class Test_creator(object):
         
     def add_simple_pt_field(self, density = 30, trans_v = [0.00, 0.00, 0.00], rot_v = [0.00, 0.00,0.00], start_t = 0, end_t = 1, **kwargs):
         ''' simple translating point field'''
+        trans_v = array(trans_v)
+        if trans_v.shape[1] == 1:
+            trans_v.repeat(numframes).reshape(3, numframes)
         dx, dy, dz = trans_v
-        rx, ry, rz = rot_v
-        vel = linalg.norm([dx, dy, dz])
-        disp_vector = -1* vel * self.numframes * array([dx, dy, dz])
+           rx, ry, rz = rot_v
+        dimensions = array([[cumsum(dx).min(), cumsum(dx).max()],
+                               [cumsum(dy).min(), cumsum(dy).max()],
+                               [cumsum(dz).min(), cumsum(dz).max()]])
         window_far = 2 #how far the frustum depth is set. Usually its set to 1
-        dimensions = sort(array([[0, disp_vector[0]], [0, disp_vector[1]], [0, disp_vector[2]]]))
         dimensions[:, 0] = dimensions[:, 0] - window_far*2.5
         dimensions[:,1] = dimensions[:, 1] + window_far*2.5
         volume  = abs(product(dimensions[:, 1] - dimensions[:, 0]))
@@ -230,9 +233,9 @@ class Test_creator(object):
         self.add_to_middles([pts.inc_ry, ry])
         self.add_to_middles([pts.inc_rz, rz])
         self.add_to_ends([pts.switch, False])
-        self.add_to_ends([pts.inc_px, -dx*self.numframes])
-        self.add_to_ends([pts.inc_py, -dy*self.numframes])
-        self.add_to_ends([pts.inc_pz, -dz*self.numframes])
+        self.add_to_ends([pts.inc_px, -dx.sum()])
+        self.add_to_ends([pts.inc_py, -dy.sum()])
+        self.add_to_ends([pts.inc_pz, -dz.sum()])
         self.add_to_ends([pts.inc_rx, -rx*self.numframes])
         self.add_to_ends([pts.inc_ry, -ry*self.numframes])
         self.add_to_ends([pts.inc_rz, -rz*self.numframes])
