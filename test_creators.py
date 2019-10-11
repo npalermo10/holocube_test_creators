@@ -112,7 +112,7 @@ class Moving_points():
                 act_inds += array(inds_btw_sph_range(coords_over_t, annulus.theta_range[0], annulus.theta_range[1], annulus.phi_range[0], annulus.phi_range[1], annulus.rot[0], annulus.rot[1], annulus.rot[2]))
                          
             else:
-                inact_inds -= array(inds_btw_sph_range(coords_over_t, annulus.theta_range[0], annulus.theta_range[1], annulus.phi_range[0], annulus.phi_range[1], annulus.rot[0], annulus.rot[1], annulus.rot[2]))
+                act_inds -= array(inds_btw_sph_range(coords_over_t, annulus.theta_range[0], annulus.theta_range[1], annulus.phi_range[0], annulus.phi_range[1], annulus.rot[0], annulus.rot[1], annulus.rot[2]))
                 
             act_inds = act_inds.astype('bool')
         self.act_inds = act_inds
