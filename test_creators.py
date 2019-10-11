@@ -49,7 +49,7 @@ def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max, rx,
 
 class Moving_points():
     '''returns active indexes as dictionary. Key (vel, theta range, phi range)'''
-    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]],  vel = 0, direction = [1,0,0], theta_ranges  = [[0, pi]], phi_ranges = [[-pi, pi]], ann_rot = [0,0,0], pts_rot = [0,0,0], wn_seq = [], color = 0.5):
+    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]],  vel = 0, direction = [1,0,0], pts_rot = [0,0,0], wn_seq = [], color = 0.5, annuli = []):
 
         if dot_density:
             disp_vector = -1* vel * numframes * array(direction)
@@ -65,59 +65,57 @@ class Moving_points():
         self.start_frame = start_frame
         self.end_frame = end_frame
         self.vel = vel
-        self.ann_rx, self.ann_ry, self.ann_rz = ann_rot[0], ann_rot[1], ann_rot[2]
         self.pts_rx, self.pts_ry, self.pts_rz = pts_rot[0], pts_rot[1], pts_rot[2]
         self.direction = direction
-        self.theta_ranges = array(theta_ranges)
-        self.phi_ranges = array(phi_ranges)
-        if self.theta_ranges.shape != self.phi_ranges.shape:
-            if self.theta_ranges.shape[0] == 1:
-                self.theta_ranges = array([self.theta_ranges[0]] * self.phi_ranges.shape[0])
-            if self.phi_ranges.shape[0] == 1:
-                self.phi_ranges = array([self.phi_ranges[0]] * self.theta_ranges.shape[0])
         self.wn_seq = wn_seq
-
-        self.act_inds = []        
+        self.annuli = annuli
+        
+        
+        self.act_inds = []
         self.calc_act_inds()
         self.remove_unvisible_points()
         self.get_selector_funcs()
         self.act_inds = array([where(arr)[0] for arr in self.act_inds]) ## change these into indices instead of boolean arrays for faster running.
         
     def calc_act_inds(self):
-        for i_theta_range, theta_range in enumerate(self.theta_ranges):
-            for i_phi_range, phi_range in enumerate(self.phi_ranges):
-                coords_over_t = zeros([self.numframes, 3, self.pts.coords.shape[1]])
-                coords_over_t[0] = array([self.pts.coords[0] , self.pts.coords[1], self.pts.coords[2]])
-                dist = linalg.norm(self.direction)
-                mag  = self.vel/dist
-                x_disp = 0
-                y_disp = 0
-                z_disp = 0
-                if len(self.wn_seq) > 0:
-                    x_disp = self.direction[0] * mag * self.wn_seq
-                    y_disp = self.direction[1] * mag * self.wn_seq
-                    z_disp = self.direction[2] * mag * self.wn_seq
-                    for frame in arange(1, self.numframes):
-                        coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp[frame],
-                                                        coords_over_t[frame-1][1] + y_disp[frame],
-                                                        coords_over_t[frame-1][2] + z_disp[frame],
-                                                       ])
-                else:
-                    x_disp = self.direction[0] *mag
-                    y_disp = self.direction[1] * mag
-                    z_disp = self.direction[2] * mag
-                    for frame in arange(1, self.numframes):
-                        coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp,
-                                                        coords_over_t[frame-1][1] + y_disp,
-                                                        coords_over_t[frame-1][2] + z_disp,
-                                                       ])
-                        coords_over_t[frame] = dot(rotmat([1,0,0], self.pts_rx), coords_over_t[frame]) #rotate about x
-                        coords_over_t[frame] = dot(rotmat([0,1,0], self.pts_ry), coords_over_t[frame]) #rotate about y
-                        coords_over_t[frame] = dot(rotmat([0,0,1], self.pts_rz), coords_over_t[frame]) #rotate about z
-                        
-                self.act_inds.append(array(inds_btw_sph_range(coords_over_t, theta_range[0], theta_range[1], phi_range[0], phi_range[1], self.ann_rx, self.ann_ry, self.ann_rz)))
-        self.act_inds = array(self.act_inds)
-        self.act_inds = self.act_inds.sum(axis=0, dtype = 'bool')
+        coords_over_t = zeros([self.numframes, 3, self.pts.coords.shape[1]])
+        coords_over_t[0] = array([self.pts.coords[0] , self.pts.coords[1], self.pts.coords[2]])
+        dist = linalg.norm(self.direction)
+        mag  = self.vel/dist
+        x_disp = 0
+        y_disp = 0
+        z_disp = 0
+        if len(self.wn_seq) > 0:
+            x_disp = self.direction[0] * mag * self.wn_seq
+            y_disp = self.direction[1] * mag * self.wn_seq
+            z_disp = self.direction[2] * mag * self.wn_seq
+            for frame in arange(1, self.numframes):
+                coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp[frame],
+                                                coords_over_t[frame-1][1] + y_disp[frame],
+                                                coords_over_t[frame-1][2] + z_disp[frame],
+                                               ])
+        else:
+            x_disp = self.direction[0] *mag
+            y_disp = self.direction[1] * mag
+            z_disp = self.direction[2] * mag
+            for frame in arange(1, self.numframes):
+                coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp,
+                                                coords_over_t[frame-1][1] + y_disp,
+                                                coords_over_t[frame-1][2] + z_disp,
+                                               ])
+                coords_over_t[frame] = dot(rotmat([1,0,0], self.pts_rx), coords_over_t[frame]) #rotate about x
+                coords_over_t[frame] = dot(rotmat([0,1,0], self.pts_ry), coords_over_t[frame]) #rotate about y
+                coords_over_t[frame] = dot(rotmat([0,0,1], self.pts_rz), coords_over_t[frame]) #rotate about z
+        act_inds = zeros([coords_over_t.shape[0], coords_over_t.shape[2]])        
+        for annulus in self.annuli:
+            if annulus.type_on: 
+                act_inds += array(inds_btw_sph_range(coords_over_t, annulus.theta_range[0], annulus.theta_range[1], annulus.phi_range[0], annulus.phi_range[1], annulus.rot[0], annulus.rot[1], annulus.rot[2]))
+                         
+            else:
+                inact_inds -= array(inds_btw_sph_range(coords_over_t, annulus.theta_range[0], annulus.theta_range[1], annulus.phi_range[0], annulus.phi_range[1], annulus.rot[0], annulus.rot[1], annulus.rot[2]))
+                
+            act_inds = act_inds.astype('bool')
+        self.act_inds = act_inds
          
     def remove_unvisible_points(self):
         self.act_inds[:self.start_frame] = array([False]*self.act_inds.shape[-1])
@@ -303,12 +301,12 @@ class Test_creator(object):
         self.add_to_starts([disk.on, 1])
 
         
-    def add_annulus(self, start_t= 0 , end_t = 1, **kwargs):
+    def add_moving_points(self, start_t= 0 , end_t = 1, **kwargs):
         image_state = array([False] * self.numframes)
         image_state[int(self.numframes*start_t): int(self.numframes*end_t)] = True
         end_fr = int(self.numframes*end_t)
         start_fr = int(self.numframes*start_t)
-        annulus = Moving_points(numframes = self.numframes, start_frame= start_fr, end_frame = end_fr,   **kwargs)
+        points = Moving_points(numframes = self.numframes, start_frame= start_fr, end_frame = end_fr, **kwargs)
 
         dx = 0
         dy = 0
@@ -316,41 +314,48 @@ class Test_creator(object):
         if 'wn_seq' in kwargs:
             wn_seq = kwargs['wn_seq']
             dx, dy, dz = zeros(self.numframes), zeros(self.numframes), zeros(self.numframes)
-            dx[start_fr:] = (annulus.direction[0] * annulus.vel * wn_seq/linalg.norm(annulus.direction))[:end_fr-start_fr]
-            dy[start_fr:] = (annulus.direction[1] * annulus.vel * wn_seq/linalg.norm(annulus.direction))[:end_fr - start_fr]
-            dz[start_fr:] = (annulus.direction[2] * annulus.vel * wn_seq/linalg.norm(annulus.direction))[:end_fr - start_fr]
-            self.add_to_ends([annulus.pts.inc_px, -annulus.direction[0] * annulus.vel * sum(wn_seq[:end_fr])/linalg.norm(annulus.direction)])
-            self.add_to_ends([annulus.pts.inc_py, -annulus.direction[1] * annulus.vel * sum(wn_seq[:end_fr])/linalg.norm(annulus.direction)])
-            self.add_to_ends([annulus.pts.inc_pz, -annulus.direction[2] * annulus.vel * sum(wn_seq[:end_fr])/linalg.norm(annulus.direction)]) 
+            dx[start_fr:] = (points.direction[0] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr-start_fr]
+            dy[start_fr:] = (points.direction[1] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr - start_fr]
+            dz[start_fr:] = (points.direction[2] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr - start_fr]
+            self.add_to_ends([points.pts.inc_px, -points.direction[0] * points.vel * sum(wn_seq[:end_fr])/linalg.norm(points.direction)])
+            self.add_to_ends([points.pts.inc_py, -points.direction[1] * points.vel * sum(wn_seq[:end_fr])/linalg.norm(points.direction)])
+            self.add_to_ends([points.pts.inc_pz, -points.direction[2] * points.vel * sum(wn_seq[:end_fr])/linalg.norm(points.direction)]) 
         
         else:
-            dx = annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)
-            dy = annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)
-            dz = annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)
+            dx = points.direction[0] * points.vel/linalg.norm(points.direction)
+            dy = points.direction[1] * points.vel/linalg.norm(points.direction)
+            dz = points.direction[2] * points.vel/linalg.norm(points.direction)
                       
-            self.add_to_ends([annulus.pts.inc_px, -annulus.direction[0] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
-            self.add_to_ends([annulus.pts.inc_py, -annulus.direction[1] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]])
-            self.add_to_ends([annulus.pts.inc_pz, -annulus.direction[2] * annulus.vel/linalg.norm(annulus.direction)*annulus.act_inds.shape[0]]) 
-            self.add_to_ends([annulus.pts.inc_rx, -annulus.pts_rx*180/pi*annulus.act_inds.shape[0]])
-            self.add_to_ends([annulus.pts.inc_ry, -annulus.pts_ry*180/pi*annulus.act_inds.shape[0]])
-            self.add_to_ends([annulus.pts.inc_rz, -annulus.pts_rz*180/pi*annulus.act_inds.shape[0]])
+            self.add_to_ends([points.pts.inc_px, -points.direction[0] * points.vel/linalg.norm(points.direction)*points.act_inds.shape[0]])
+            self.add_to_ends([points.pts.inc_py, -points.direction[1] * points.vel/linalg.norm(points.direction)*points.act_inds.shape[0]])
+            self.add_to_ends([points.pts.inc_pz, -points.direction[2] * points.vel/linalg.norm(points.direction)*points.act_inds.shape[0]]) 
+            self.add_to_ends([points.pts.inc_rx, -points.pts_rx*180/pi*points.act_inds.shape[0]])
+            self.add_to_ends([points.pts.inc_ry, -points.pts_ry*180/pi*points.act_inds.shape[0]])
+            self.add_to_ends([points.pts.inc_rz, -points.pts_rz*180/pi*points.act_inds.shape[0]])
 
-        self.add_to_middles([annulus.pts.on, image_state])
-        self.add_to_middles([annulus.pts.subset_set_py, annulus.select_all, annulus.far_y])
-        self.add_to_middles([annulus.pts.subset_set_py, annulus.act_inds, annulus.orig_y])
-        self.add_to_middles([annulus.pts.inc_px,    dx])
-        self.add_to_middles([annulus.pts.inc_py,    dy])
-        self.add_to_middles([annulus.pts.inc_pz,    dz])
-        self.add_to_middles([annulus.pts.inc_rx,    annulus.pts_rx*180/pi])
-        self.add_to_middles([annulus.pts.inc_ry,    annulus.pts_ry*180/pi])
-        self.add_to_middles([annulus.pts.inc_rz,    annulus.pts_rz*180/pi])
-        self.add_to_ends([annulus.pts.on, 0])
+        self.add_to_middles([points.pts.on, image_state])
+        self.add_to_middles([points.pts.subset_set_py, points.select_all, points.far_y])
+        self.add_to_middles([points.pts.subset_set_py, points.act_inds, points.orig_y])
+        self.add_to_middles([points.pts.inc_px,    dx])
+        self.add_to_middles([points.pts.inc_py,    dy])
+        self.add_to_middles([points.pts.inc_pz,    dz])
+        self.add_to_middles([points.pts.inc_rx,    points.pts_rx*180/pi])
+        self.add_to_middles([points.pts.inc_ry,    points.pts_ry*180/pi])
+        self.add_to_middles([points.pts.inc_rz,    points.pts_rz*180/pi])
+        self.add_to_ends([points.pts.on, 0])
     
 class Ann_test_creator(Test_creator):
     ''' creates annulus experiments. takes Moving_points objects. This should be phased out soon 5/29/2019. '''
     def __init__(self, num_frames):
         Test_creator.__init__(self, num_frames)
-      
+        
+class Annulus():
+    def __init__(self, theta_range  = [0, pi], phi_range = [-pi, pi], rot = [0,0,0], type_on = True):
+        self.theta_range = theta_range
+        self.phi_range = phi_range
+        self.rot = rot
+        self.type_on = type_on
+    
 class Motion_ill_test_creator(Test_creator):
     '''create static image motion illusions. pick image location, onset time, end time'''
     def __init__(self, num_frames):
