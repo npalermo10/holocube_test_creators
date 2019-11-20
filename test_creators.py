@@ -49,7 +49,7 @@ def inds_btw_sph_range(coords_array, theta_min, theta_max, phi_min, phi_max, rx,
 
 class Moving_points():
     '''returns active indexes as dictionary. Key (vel, theta range, phi range)'''
-    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]],  vel = 0, direction = [1,0,0], pts_rot = [0,0,0], wn_seq = [], color = 0.5, annuli = []):
+    def __init__(self, numframes,  start_frame, end_frame, dot_density = None, numpoints = 5000, dimensions= [[-4,4],[-2,2],[-30,5]],  default_on = False, vel = 0, direction = [1,0,0], pts_rot = [0,0,0], wn_seq = [], color = 1, annuli = []):
 
         if dot_density:
             disp_vector = -1* vel * numframes * array(direction)
@@ -68,6 +68,7 @@ class Moving_points():
         self.pts_rx, self.pts_ry, self.pts_rz = pts_rot[0], pts_rot[1], pts_rot[2]
         self.direction = direction
         self.wn_seq = wn_seq
+        self.default_on = default_on
         self.annuli = annuli
         
         
@@ -76,13 +77,7 @@ class Moving_points():
         self.remove_unvisible_points()
         self.get_selector_funcs()
         self.act_inds = array([where(arr)[0] for arr in self.act_inds]) ## change these into indices instead of boolean arrays for faster running.
-        self.add_annuli_bg_color()
         
-    def add_annuli_bg_color(self):    
-        for annulus in self.annuli:
-                if annulus.bg_color != 0 and not annulus.type_on:
-                        import pdb; pdb.set_trace()
-                    self.add_sph_seg(rx = annulus.rot[0], ry = annulus.rot[1], rz = annulus.rot[2], color = annulus.bg_color, polang_top = annulus.theta_range[0], polang_bot = annulus.theta_range[1])
                     
     def calc_act_inds(self):
         coords_over_t = zeros([self.numframes, 3, self.pts.coords.shape[1]])
@@ -113,7 +108,9 @@ class Moving_points():
                 coords_over_t[frame] = dot(rotmat([1,0,0], self.pts_rx), coords_over_t[frame]) #rotate about x
                 coords_over_t[frame] = dot(rotmat([0,1,0], self.pts_ry), coords_over_t[frame]) #rotate about y
                 coords_over_t[frame] = dot(rotmat([0,0,1], self.pts_rz), coords_over_t[frame]) #rotate about z
-        act_inds = zeros([coords_over_t.shape[0], coords_over_t.shape[2]])        
+        act_inds = zeros([coords_over_t.shape[0], coords_over_t.shape[2]])
+        if self.default_on:
+            act_inds = ones([coords_over_t.shape[0], coords_over_t.shape[2]])
         for annulus in self.annuli:
             if annulus.type_on: 
                 act_inds += array(inds_btw_sph_range(coords_over_t, annulus.theta_range[0], annulus.theta_range[1], annulus.phi_range[0], annulus.phi_range[1], annulus.rot[0], annulus.rot[1], annulus.rot[2]))
@@ -308,7 +305,7 @@ class Test_creator(object):
         self.add_to_starts([disk.on, 1])
 
         
-    def add_moving_points(self, start_t= 0 , end_t = 1, **kwargs):
+    def add_moving_points(self, start_t= 0 , end_t = 1,**kwargs):
         image_state = array([False] * self.numframes)
         image_state[int(self.numframes*start_t): int(self.numframes*end_t)] = True
         end_fr = int(self.numframes*end_t)
@@ -340,7 +337,10 @@ class Test_creator(object):
             self.add_to_ends([points.pts.inc_ry, -points.pts_ry*180/pi*points.act_inds.shape[0]])
             self.add_to_ends([points.pts.inc_rz, -points.pts_rz*180/pi*points.act_inds.shape[0]])
 
-        
+        for annulus in points.annuli:
+                if annulus.bg_color is not None:
+                    self.add_sph_seg(rx = annulus.rot[0], ry = annulus.rot[1], rz = annulus.rot[2], color = annulus.bg_color, polang_top = annulus.theta_range[0]*360/(2*pi), polang_bot = annulus.theta_range[1]*360/(2*pi))
+   
         self.add_to_middles([points.pts.on, image_state])
         self.add_to_middles([points.pts.subset_set_py, points.select_all, points.far_y])
         self.add_to_middles([points.pts.subset_set_py, points.act_inds, points.orig_y])
@@ -358,7 +358,7 @@ class Ann_test_creator(Test_creator):
         Test_creator.__init__(self, num_frames)
         
 class Annulus():
-    def __init__(self, theta_range  = [0, pi], phi_range = [-pi, pi], rot = [0,0,0], type_on = True, bg_color = 0):
+    def __init__(self, theta_range  = [0, pi], phi_range = [-pi, pi], rot = [0,0,0], type_on = True, bg_color = None):
         self.theta_range = theta_range
         self.phi_range = phi_range
         self.rot = rot
