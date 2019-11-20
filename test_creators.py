@@ -76,7 +76,14 @@ class Moving_points():
         self.remove_unvisible_points()
         self.get_selector_funcs()
         self.act_inds = array([where(arr)[0] for arr in self.act_inds]) ## change these into indices instead of boolean arrays for faster running.
+        self.add_annuli_bg_color()
         
+    def add_annuli_bg_color(self):    
+        for annulus in self.annuli:
+                if annulus.bg_color != 0 and not annulus.type_on:
+                        import pdb; pdb.set_trace()
+                    self.add_sph_seg(rx = annulus.rot[0], ry = annulus.rot[1], rz = annulus.rot[2], color = annulus.bg_color, polang_top = annulus.theta_range[0], polang_bot = annulus.theta_range[1])
+                    
     def calc_act_inds(self):
         coords_over_t = zeros([self.numframes, 3, self.pts.coords.shape[1]])
         coords_over_t[0] = array([self.pts.coords[0] , self.pts.coords[1], self.pts.coords[2]])
@@ -333,6 +340,7 @@ class Test_creator(object):
             self.add_to_ends([points.pts.inc_ry, -points.pts_ry*180/pi*points.act_inds.shape[0]])
             self.add_to_ends([points.pts.inc_rz, -points.pts_rz*180/pi*points.act_inds.shape[0]])
 
+        
         self.add_to_middles([points.pts.on, image_state])
         self.add_to_middles([points.pts.subset_set_py, points.select_all, points.far_y])
         self.add_to_middles([points.pts.subset_set_py, points.act_inds, points.orig_y])
@@ -350,11 +358,12 @@ class Ann_test_creator(Test_creator):
         Test_creator.__init__(self, num_frames)
         
 class Annulus():
-    def __init__(self, theta_range  = [0, pi], phi_range = [-pi, pi], rot = [0,0,0], type_on = True):
+    def __init__(self, theta_range  = [0, pi], phi_range = [-pi, pi], rot = [0,0,0], type_on = True, bg_color = 0):
         self.theta_range = theta_range
         self.phi_range = phi_range
         self.rot = rot
         self.type_on = type_on
+        self.bg_color = bg_color
     
 class Motion_ill_test_creator(Test_creator):
     '''create static image motion illusions. pick image location, onset time, end time'''
