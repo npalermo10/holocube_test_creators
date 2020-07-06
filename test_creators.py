@@ -1,5 +1,26 @@
 from numpy import *
+import numpy as np
 import holocube.hc5 as hc5
+
+def get_sph_segs_nbrs(p,n=2):
+    ''' get spherical segment angles given the circle radius and the percentage surface area covered. The first segment is centered at 90 degrees (orthogonal).'''
+    if p*n >1:
+        raise ValueError('you have too many segments or too high percentage visible area')
+    ds = []
+    hs = []
+    d1 = -p
+    h1 = -2*d1
+    ds.append(d1)
+    hs.append(h1)
+    for seg in np.arange(n-1):
+        d = ds[seg]+hs[seg]
+        h = (seg+2)*p
+        ds.append(d)
+        hs.append(h)
+    thetas = []    
+    for i_d, d in enumerate(ds):    
+        thetas.append(np.array([np.pi/2-np.arcsin((d+hs[i_d])), np.pi/2-np.arcsin(d)]))
+    return np.vstack(thetas)[::-1]
 
 def calc_theta_phi(x,y,z, phi_rot = 0):
     '''from cartesian coords return spherical coords,  declination theta (pi - theta), and phi'''
@@ -71,12 +92,11 @@ class Moving_points():
         self.default_on = default_on
         self.annuli = annuli
         
-        
-        self.act_inds = []
         self.calc_act_inds()
         self.remove_unvisible_points()
+        self.get_going_in_out()
         self.get_selector_funcs()
-        self.act_inds = array([where(arr)[0] for arr in self.act_inds]) ## change these into indices instead of boolean arrays for faster running.
+        # self.act_inds = array([where(arr)[0] for arr in self.act_inds]) ## change these into indices instead of boolean arrays for faster running.
         
                     
     def calc_act_inds(self):
@@ -91,7 +111,7 @@ class Moving_points():
             x_disp = self.direction[0] * mag * self.wn_seq
             y_disp = self.direction[1] * mag * self.wn_seq
             z_disp = self.direction[2] * mag * self.wn_seq
-            for frame in arange(1, self.numframes):
+            for frame in arange(1, len(self.wn_seq)):
                 coords_over_t[frame] = array([coords_over_t[frame-1][0] + x_disp[frame],
                                                 coords_over_t[frame-1][1] + y_disp[frame],
                                                 coords_over_t[frame-1][2] + z_disp[frame],
@@ -117,10 +137,20 @@ class Moving_points():
                          
             else:
                 act_inds -= array(inds_btw_sph_range(coords_over_t, annulus.theta_range[0], annulus.theta_range[1], annulus.phi_range[0], annulus.phi_range[1], annulus.rot[0], annulus.rot[1], annulus.rot[2]))
-                
+
             act_inds = act_inds.astype('bool')
+            
         self.act_inds = act_inds
-         
+                
+    def get_going_in_out(self):
+        act_inds_t1 = self.act_inds.astype('int')
+        first_frame = zeros([1,self.act_inds.shape[1]])
+        act_inds_t0 = vstack([first_frame, self.act_inds[:-1]]).astype('int')
+        diff_act_inds_t = act_inds_t1 - act_inds_t0
+        inds = array([arange(self.act_inds.shape[1])] * self.act_inds.shape[0])
+        self.inds_going_in = [ind[diff_act_inds_t[i_ind] == 1] for i_ind, ind in enumerate(inds)]
+        self.inds_going_out = [ind[diff_act_inds_t[i_ind] == -1] for i_ind, ind in enumerate(inds)]
+        
     def remove_unvisible_points(self):
         self.act_inds[:self.start_frame] = array([False]*self.act_inds.shape[-1])
         self.act_inds[self.end_frame:] = array([False]*self.act_inds.shape[-1])
@@ -132,7 +162,7 @@ class Moving_points():
     def get_selector_funcs(self):
         self.orig_y = array([self.pts.coords[1, :].copy()]*self.numframes)
         self.orig_x = array([self.pts.coords[0, :].copy()]*self.numframes)
-        self.far_y = array([[10] * self.pts.num] * self.numframes)
+        self.far_y = 20
         self.select_all = array([[1]*self.pts.num] * self.numframes,  dtype='bool')
 
 class Test_creator(object):
@@ -305,11 +335,14 @@ class Test_creator(object):
         self.add_to_starts([disk.on, 1])
 
         
-    def add_moving_points(self, start_t= 0 , end_t = 1,**kwargs):
+    def add_moving_points(self, start_t= 0 , end_t = 1, start_fr = [], end_fr = [], **kwargs):
         image_state = array([False] * self.numframes)
         image_state[int(self.numframes*start_t): int(self.numframes*end_t)] = True
-        end_fr = int(self.numframes*end_t)
-        start_fr = int(self.numframes*start_t)
+        if not start_fr:
+            start_fr = int(self.numframes*start_t)
+        if not end_fr:    
+            end_fr = int(self.numframes*end_t)
+        
         points = Moving_points(numframes = self.numframes, start_frame= start_fr, end_frame = end_fr, **kwargs)
 
         dx = 0
@@ -318,12 +351,12 @@ class Test_creator(object):
         if 'wn_seq' in kwargs:
             wn_seq = kwargs['wn_seq']
             dx, dy, dz = zeros(self.numframes), zeros(self.numframes), zeros(self.numframes)
-            dx[start_fr:] = (points.direction[0] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr-start_fr]
-            dy[start_fr:] = (points.direction[1] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr - start_fr]
-            dz[start_fr:] = (points.direction[2] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr - start_fr]
-            self.add_to_ends([points.pts.inc_px, -points.direction[0] * points.vel * sum(wn_seq[:end_fr])/linalg.norm(points.direction)])
-            self.add_to_ends([points.pts.inc_py, -points.direction[1] * points.vel * sum(wn_seq[:end_fr])/linalg.norm(points.direction)])
-            self.add_to_ends([points.pts.inc_pz, -points.direction[2] * points.vel * sum(wn_seq[:end_fr])/linalg.norm(points.direction)]) 
+            dx[start_fr:start_fr + len(wn_seq)] = (points.direction[0] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr-start_fr]
+            dy[start_fr:start_fr + len(wn_seq)] = (points.direction[1] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr - start_fr]
+            dz[start_fr:start_fr + len(wn_seq)] = (points.direction[2] * points.vel * wn_seq/linalg.norm(points.direction))[:end_fr - start_fr]
+            self.add_to_ends([points.pts.inc_px, -points.direction[0] * points.vel * sum(dx)/linalg.norm(points.direction)])
+            self.add_to_ends([points.pts.inc_py, -points.direction[1] * points.vel * sum(dy)/linalg.norm(points.direction)])
+            self.add_to_ends([points.pts.inc_pz, -points.direction[2] * points.vel * sum(dz)/linalg.norm(points.direction)]) 
         
         else:
             dx = points.direction[0] * points.vel/linalg.norm(points.direction)
@@ -340,10 +373,11 @@ class Test_creator(object):
         for annulus in points.annuli:
                 if annulus.bg_color is not None:
                     self.add_sph_seg(rx = annulus.rot[0], ry = annulus.rot[1], rz = annulus.rot[2], color = annulus.bg_color, polang_top = annulus.theta_range[0]*360/(2*pi), polang_bot = annulus.theta_range[1]*360/(2*pi))
-   
+        self.add_to_starts([points.pts.subset_inc_py, points.select_all[0], points.far_y])
+        self.add_to_ends([points.pts.subset_set_py, points.select_all[0], points.orig_y[0]])
         self.add_to_middles([points.pts.on, image_state])
-        self.add_to_middles([points.pts.subset_set_py, points.select_all, points.far_y])
-        self.add_to_middles([points.pts.subset_set_py, points.act_inds, points.orig_y])
+        self.add_to_middles([points.pts.subset_inc_py, points.inds_going_out, points.far_y])
+        self.add_to_middles([points.pts.subset_inc_py, points.inds_going_in, -points.far_y])
         self.add_to_middles([points.pts.inc_px,    dx])
         self.add_to_middles([points.pts.inc_py,    dy])
         self.add_to_middles([points.pts.inc_pz,    dz])
